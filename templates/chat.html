@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IT Maintenance Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #000000;
+            color: #EAEAEA;
+            padding: 40px;
+        }
+
+        .chat-container {
+            width: 60%;
+            margin: auto;
+            background: #2C2C2C;
+            padding: 20px;
+            border-radius: 10px;
+            min-height: 400px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
+        }
+
+        .message {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+        }
+
+        .bot {
+            background-color: #2C2C2C;
+            color: #E0E0E0;
+            text-align: left;
+        }
+
+        .you {
+            background-color: #3A3F47;
+            color: #FFFFFF;
+            text-align: right;
+        }
+
+        form {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            background-color: #1E1E1E;
+            border: 1px solid #444;
+            color: #EAEAEA;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .option-buttons {
+            margin-top: 10px;
+        }
+
+        .quick-option {
+            margin: 4px 4px 0 0;
+            padding: 6px 12px;
+            border-radius: 6px;
+            background-color: white;
+            border: 1px solid #555;
+            color: #000000;
+            cursor: pointer;
+        }
+
+        .quick-option:hover {
+            background-color: #505861;
+        }
+
+        .suggested-questions {
+            margin-top: 20px;
+        }
+
+        .suggested-questions ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .suggested-questions li {
+            display: inline-block;
+            background-color: #3A3F47;
+            color: #EAEAEA;
+            padding: 6px 12px;
+            margin: 5px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .suggested-questions li:hover {
+            background-color: #505861;
+        }
+
+        #satisfaction-section {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #satisfaction-section button {
+            background-color: #007BFF;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            padding: 6px 14px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        /* When chat has started */
+.other-topics li {
+    background-color: #000000 !important;
+    color: white !important;
+}
+
+    </style>
+</head>
+<body>
+<div class="chat-container">
+
+    <h2 style="text-align: center;">IT Techbot</h2>
+<div id="chatContainer">
+{% for message in chat_history %}
+    <div class="message {{ 'you' if message.sender == 'You' else 'bot' }}">
+        <strong>{{ message.sender }}:</strong> {{ message.text }}
+
+        {% if message.sender == 'Bot' and message.options %}
+            <div class="option-buttons option-container">
+                {% for option in message.options %}
+                    <form method="POST" style="display: inline;" onsubmit="return hideOptionsAndSubmit(this)">
+                        <input type="hidden" name="message" value="{{ option }}">
+                        <button type="submit" name="action" value="send" class="quick-option">{{ option }}</button>
+                    </form>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+{% endfor %}
+
+
+    <div id="scroll-anchor"></div> <!-- anchor must be inside -->
+</div>
+
+
+
+    <form method="POST" id="chatForm">
+        <input type="text" name="message" id="chatInput" placeholder="Ask me about your IT issue..." required>
+        <button type="submit" name="action" value="send" onclick="setRequired(true)">Send</button>
+        <button type="submit" name="action" value="clear" onclick="setRequired(false)">Clear</button>
+        <button type="button" onclick="thankBot()">Thank You</button>
+    </form>
+
+<div class="suggested-questions">
+    <p><strong>
+        {% if chat_history|selectattr("sender", "equalto", "You")|list|length > 0 %}
+            Other topics:
+        {% else %}
+            Try asking:
+        {% endif %}
+    </strong></p>
+
+   <ul id="faqList"
+    class="{% if chat_history|selectattr('sender', 'equalto', 'You')|list|length > 0 %}other-topics{% else %}default-topics{% endif %}">
+
+
+        <li class="suggestion">How to reset my password?</li>
+        <li class="suggestion">WiFi not working</li>
+        <li class="suggestion">System is slow</li>
+        <li class="suggestion">Printer not working</li>
+        <li class="suggestion">How to troubleshoot my computer system?</li>
+    </ul>
+</div>
+
+
+    <a href="{{ url_for('home') }}" class="back-button" style="display:inline-block; padding:6px 14px; margin-top:20px; font-size:14px; background-color:#2D2D2D; color:#EAEAEA; text-decoration:none; border:1px solid #555; border-radius:6px;">← Home</a>
+
+    <div id="satisfaction-section">
+        <p style="font-size: 18px;">Glad I could help! 😊</p>
+        <button onclick="restoreChat()">🔄 Need something else?</button>
+    </div>
+
+</div>
+
+<script>
+    function setRequired(isRequired) {
+        document.getElementById('chatInput').required = isRequired;
+    }
+
+    function thankBot() {
+        document.getElementById('chatForm').style.display = 'none';
+        document.querySelector('.suggested-questions').style.display = 'none';
+        document.getElementById('satisfaction-section').style.display = 'block';
+
+        document.getElementById('chatContainer').innerHTML = '<div id="scroll-anchor"></div>';
+        fetch('/thankyou', { method: 'POST' });
+    }
+
+    function restoreChat() {
+        document.getElementById('chatForm').style.display = 'flex';
+        document.querySelector('.suggested-questions').style.display = 'block';
+        document.getElementById('satisfaction-section').style.display = 'none';
+    }
+
+    document.querySelectorAll(".suggestion").forEach(function (item) {
+        item.addEventListener("click", function () {
+            document.getElementById("chatInput").value = item.innerText;
+            document.getElementById("faqSearch").value = '';
+            document.getElementById("faqList").style.display = 'block';
+        });
+    });
+
+    document.getElementById("faqSearch")?.addEventListener("keyup", function () {
+        const filter = this.value.toLowerCase();
+        const items = document.querySelectorAll("#faqList li");
+        let hasMatch = false;
+
+        items.forEach(function (item) {
+            const isVisible = filter && item.textContent.toLowerCase().includes(filter);
+            item.style.display = isVisible ? "inline-block" : "none";
+            if (isVisible) hasMatch = true;
+        });
+
+        document.getElementById("faqList").style.display = hasMatch || filter === '' ? "block" : "none";
+    });
+
+    // ✅ SCROLL TO BOTTOM FUNCTION
+    function scrollToBottom() {
+        const anchor = document.getElementById("scroll-anchor");
+        if (anchor) {
+            anchor.scrollIntoView({ behavior: "smooth" });
+        }
+    }
+
+    // ✅ SCROLL ON PAGE LOAD
+    window.onload = scrollToBottom;
+
+    // ✅ FUTURE-PROOF: If you use fetch/JS-based chat later
+    // You’ll call scrollToBottom() after appending any new message
+
+
+
+
+
+
+</script>
+
+
+
+</body>
+</html>
